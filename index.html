@@ -1,57 +1,72 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>도면 기반 재고 뷰어</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      font-size: 16px;
-      padding: 10px;
-    }
-    img {
-      max-width: 100%;
-      margin-bottom: 20px;
-    }
-    .layout {
-      display: flex;
-      justify-content: space-between;
-      gap: 20px;
-    }
-    .column {
-      flex: 1;
-    }
-    .section-button {
-      background: #d0e6ff;
-      font-weight: bold;
-      padding: 10px;
-      margin-bottom: 6px;
-      border: 1px solid #559;
-      cursor: pointer;
-      text-align: center;
-    }
-    .zone-button {
-      background: #f0f0f0;
-      padding: 8px;
-      margin: 4px 0;
-      border: 1px solid #ccc;
-      cursor: pointer;
-      text-align: center;
-    }
-    .popup {
-      margin-top: 20px;
-      padding: 10px;
-      background: #fffbe6;
-      border: 1px solid #aaa;
-      display: none;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>도면 기반 재고 뷰어</title>
+<style>
+  body {
+    font-family: sans-serif;
+    font-size: 16px;
+    padding: 10px;
+  }
+  img {
+    max-width: 100%;
+    margin-bottom: 20px;
+  }
+  .layout {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .column {
+    flex: 1;
+    min-width: 150px;
+  }
+  .section-button {
+    background: #d0e6ff;
+    font-weight: bold;
+    padding: 10px;
+    margin-bottom: 6px;
+    border: 1px solid #559;
+    cursor: pointer;
+    text-align: center;
+  }
+  .zone-button {
+    background: #f0f0f0;
+    padding: 8px;
+    margin: 4px 0;
+    border: 1px solid #ccc;
+    cursor: pointer;
+    text-align: center;
+  }
+  #popup {
+    margin-top: 20px;
+    padding: 10px;
+    background: #fffbe6;
+    border: 1px solid #aaa;
+    display: none;
+  }
+  #searchSection {
+    margin-top: 30px;
+  }
+  #searchInput {
+    width: 100%;
+    padding: 8px;
+    font-size: 16px;
+  }
+  #searchResults {
+    margin-top: 12px;
+    font-weight: bold;
+    color: #003366;
+  }
+</style>
 </head>
 <body>
 
 <h2>🧭 창고 도면 기반 재고 뷰어</h2>
-<img src="https://github.com/JEONG1024235/Rack-inventory/blob/main/Floor_map.png?raw=true" alt="도면 이미지" style="max-width:100%; height:auto;">
+<img src="data:image/png;base64,..." alt="도면" />
 
 <div class="layout">
   <div class="column">
@@ -66,95 +81,113 @@
     <div class="section-button" onclick="toggle('기타')">▶ 기타</div>
     <div id="zones-기타" style="display:none"></div>
   </div>
+  <div class="column">
+    <div class="section-button" onclick="toggle('복도')">▶ 복도</div>
+    <div id="zones-복도" style="display:none"></div>
+  </div>
+  <div class="column">
+    <div class="section-button" onclick="toggle('사무실')">▶ 사무실</div>
+    <div id="zones-사무실" style="display:none"></div>
+  </div>
 </div>
 
-
-<div style="margin-top: 30px;">
+<div id="searchSection">
   <h3>🔍 컬렉션 검색</h3>
-  <input type="text" id="searchInput" placeholder="예: 1L8264" style="width:100%; padding:8px; font-size:16px;" oninput="searchCollection()">
-  <div id="searchResults" style="margin-top: 12px; font-weight: bold; color: #003366;"></div>
+  <input type="text" id="searchInput" placeholder="예: 1L8264" oninput="searchCollection()" />
+  <div id="searchResults"></div>
 </div>
-<div class="popup" id="popup"></div>
 
+<div id="popup"></div>
 
 <script>
-  const inventory = {
-    "위생복 - AR": ["1V8421", "1L7420", "휴직자/병가자"],
-    "위생복 - BL": ["1V6864", "1L6586", "1L7473", "1L8265(L-F)", "1L8266", "1L8268", "1V6865", "1L2388"],
-    "위생복 - BR": ["1L8882", "1L8883", "1V7625"],
-    "위생복 - CL": ["1F5475", "1L5827", "1L8270", "1V8391", "1V6423", "1L8882(L-D)", "1F3718(L-D)", "1F5475(L-D)"],
-    "위생복 - CR": ["1L7019(N)", "1L5238", "1L8884", "1L8884(23)"],
-    "위생복 - DL": ["1L7019(Used)", "1L8264(Used)"],
-    "위생복 - DR": ["1V9970", "1V9971", "1L0596", "1L0596(23)"],
-    "위생복 - EL": ["1L8264(N)"],
-    "위생복 - ER": ["1V3718", "1V3718(23)", "1V3722", "1V4451", "1V4452"],
-    "위생복 - FL": ["1L8263(Used)"],
-    "위생복 - FR": ["1L8263(N)", "1L6426(N)"],
-    "위생복 - GL": ["1L6426(Used)"],
-    "방진복 - HR": ["1F8316", "1F8319", "1F9491", "1F9492", "1L6428", "1L6429"],
-    "방진복 - JL": ["1F8314(L-A)", "1F8317", "1F8315(L-A)", "1F8318"],
-    "방진복 - JR": ["1F9593", "1F9594", "1F9595", "1F9596", "17655"],
-    "방진복 - KL": ["1F3487", "1F3489"],
-    "방진복 - KR": ["1F3490", "1F3488", "1L5241"],
-    "방진복 - LL": ["1V1429", "1F1047", "1F1044"],
-    "방진복 - LR": ["1V9341", "1F1041"],
-    "방진복 - ML": ["1F1050", "1F1051", "1F1048", "1F3867", "1F4698"],
-    "방진복 - MR": ["1F3866(L-U)", "1G0969(L-P)", "1F1047(L-P)", "17655(L-P)", "1F9484"],
-    "방진복 - OL": ["1F3881", "1F5150", "1V9340"],
-    "방진복 - OR": ["1F3488(L-C)", "1V1429(L-C)", "1F4699"],
-    "방진복 - PL": ["1F4698(L-C)", "17655(L-C)", "1F4698(L-CH)", "17655(L-CH)"],
-    "모자": ["1G0974", "1G1429", "1F0108", "1V4101", "1L6430", "1L4177", "1F4533", "1F4419", "1L7387", "1F9226~1F9231", "1F3169"],
-    "리턴": ["진행중"],
-    "온보딩": ["제니엘 3공장"],
-    "BOX A": ["1L8263", "1L6426"],
-    "BOX B": ["1L6428", "1L6429", "1L8263", "1L6426"],
-    "BOX C": ["1F9593", "1F1053"],
-    "배송 정지": ["확인중"]
-  };
+const inventory = {
+  "위생복 - AR": ["1V8421", "1L7420", "휴직자/병가자"],
+  "위생복 - BL": ["1V6864", "1L6586", "1L7473", "1L8265(L-F)", "1L8266", "1L8268", "1V6865", "1L2388"],
+  "위생복 - BR": ["1L8882", "1L8883", "1V7625"],
+  "위생복 - CL": ["1F5475", "1L5827", "1L8270", "1V8391", "1V6423", "1L8882(L-D)", "1F3718(L-D)", "1F5475(L-D)"],
+  "위생복 - CR": ["1L7019(N)", "1L5238", "1L8884", "1L8884(23)"],
+  "위생복 - DL": ["1L7019(Used)", "1L8264(Used)"],
+  "위생복 - DR": ["1V9970", "1V9971", "1L0596", "1L0596(23)"],
+  "위생복 - EL": ["1L8264(N)"],
+  "위생복 - ER": ["1V3718", "1V3718(23)", "1V3722", "1V4451", "1V4452"],
+  "위생복 - FL": ["1L8263(Used)"],
+  "위생복 - FR": ["1L8263(N)", "1L6426(N)"],
+  "위생복 - GL": ["1L6426(Used)"],
 
-  const sections = {
-    "위생복": ['AR','BL','BR','CL','CR','DL','DR','EL','ER','FL','FR','GL'],
-    "방진복": ['HR','JL','JR','KL','KR','LL','LR','ML','MR','OL','OR','PL'],
-    "기타": ['모자','리턴','온보딩','BOX A','BOX B','BOX C','배송 정지']
-  };
+  "방진복 - HR": ["1F8316", "1F8319", "1F9491", "1F9492", "1L6428", "1L6429"],
+  "방진복 - JL": ["1F8314(L-A)", "1F8317", "1F8315(L-A)", "1F8318"],
+  "방진복 - JR": ["1F9593", "1F9594", "1F9595", "1F9596", "17655"],
+  "방진복 - KL": ["1F3487", "1F3489"],
+  "방진복 - KR": ["1F3490", "1F3488", "1L5241"],
+  "방진복 - LL": ["1V1429", "1F1047", "1F1044"],
+  "방진복 - LR": ["1V9341", "1F1041"],
+  "방진복 - ML": ["1F1050", "1F1051", "1F1048", "1F3867", "1F4698"],
+  "방진복 - MR": ["1F3866(L-U)", "1G0969(L-P)", "1F1047(L-P)", "17655(L-P)", "1F9484"],
+  "방진복 - OL": ["1F3881", "1F5150", "1V9340"],
+  "방진복 - OR": ["1F3488(L-C)", "1V1429(L-C)", "1F4699"],
+  "방진복 - PL": ["1F4698(L-C)", "17655(L-C)", "1F4698(L-CH)", "17655(L-CH)"],
 
-  function toggle(section) {
-    const target = document.getElementById('zones-' + section);
-    if (target.style.display === 'none') {
-      target.innerHTML = sections[section].map(col => {
-        const zone = section === '기타' ? col : `${section} - ${col}`;
-        return `<div class='zone-button' onclick='showPopup("${zone}")'>${col}</div>`;
-      }).join('');
-      target.style.display = 'block';
-    } else {
-      target.style.display = 'none';
+  "모자": ["1G0974", "1G1429", "1F0108", "1V4101", "1L6430", "1L4177", "1F4533", "1F4419", "1L7387", "1F9226~1F9231", "1F3169"],
+  "BOX A": ["1L8263", "1L6426"],
+  "BOX B": ["1L6428", "1L6429", "1L8263", "1L6426"],
+  "BOX C": ["1F9593", "1F1053"],
+  "배송 정지": ["세렌라이프", "SG메디칼", "네이처스로우", "바름바이오", "푸디엄"],
+
+  "cBOX A": ["1F1054", "1F1053"],
+  "cBOX B": ["1L6426", "1L8264", "1L8884", "17655", "1F4698", "1L8882"],
+  "cBOX C": ["1L8263(23)", "1L6426(23)", "1L8264(23)", "1L7019(23)"],
+
+  "oBOX A": ["로고대기", "타이슨푸드"],
+  "oBOX B": ["확인중"],
+  "oBOX C": ["롯데푸드", "타이슨푸드", "모자(N)"],
+  "oBOX D": ["17553", "1F9700", "1V4102"],
+  "oBOX E": ["1F8896"]
+};
+
+const sections = {
+  "위생복": ['AR','BL','BR','CL','CR','DL','DR','EL','ER','FL','FR','GL'],
+  "방진복": ['HR','JL','JR','KL','KR','LL','LR','ML','MR','OL','OR','PL'],
+  "기타": ['모자','BOX A','BOX B','BOX C','배송 정지'],
+  "복도": ['cBOX A','cBOX B','cBOX C'],
+  "사무실": ['oBOX A','oBOX B','oBOX C','oBOX D','oBOX E']
+};
+
+function toggle(section) {
+  const target = document.getElementById('zones-' + section);
+  if (target.style.display === 'none' || target.style.display === '') {
+    target.innerHTML = sections[section].map(col => {
+      const zone = ['기타', '복도', '사무실'].includes(section) ? col : `${section} - ${col}`;
+      return `<div class='zone-button' onclick='showPopup("${zone}")'>${col}</div>`;
+    }).join('');
+    target.style.display = 'block';
+  } else {
+    target.style.display = 'none';
+  }
+}
+
+function showPopup(zone) {
+  const popup = document.getElementById('popup');
+  const items = inventory[zone];
+  popup.innerHTML = `<strong>${zone}</strong><br>` + (items ? items.map(i => `- ${i}`).join('<br>') : '(등록된 컬렉션 없음)');
+  popup.style.display = 'block';
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+function searchCollection() {
+  const input = document.getElementById('searchInput').value.trim();
+  if (input === '') {
+    document.getElementById('searchResults').innerHTML = '';
+    return;
+  }
+  const results = [];
+  for (const [zone, items] of Object.entries(inventory)) {
+    if (items.some(item => item.includes(input))) {
+      results.push(`${input} → ${zone}`);
     }
   }
-
-  function showPopup(zone) {
-    const popup = document.getElementById('popup');
-    const items = inventory[zone];
-    popup.innerHTML = `<strong>${zone}</strong><br>` + (items ? items.map(i => `- ${i}`).join('<br>') : '(등록된 컬렉션 없음)');
-    popup.style.display = 'block';
-    window.scrollTo(0, document.body.scrollHeight);
-  }
-
-  function searchCollection() {
-    const input = document.getElementById('searchInput').value.trim();
-    const results = [];
-    for (const [zone, items] of Object.entries(inventory)) {
-      if (items.some(item => item.includes(input))) {
-        results.push(`${input} → ${zone}`);
-      }
-    }
-    if (input === '') {
-      document.getElementById('searchResults').innerHTML = '';
-    } else {
-      document.getElementById('searchResults').innerHTML = results.length ? results.join('<br>') : '(검색 결과 없음)';
-    }
-  }
+  document.getElementById('searchResults').innerHTML = results.length ? results.join('<br>') : '(검색 결과 없음)';
+}
 </script>
-
 
 </body>
 </html>
